@@ -73,10 +73,6 @@ typedef struct charpool {
     size_t block_size;
     small_string_stack_node_memory_pool *small_string_free_list_node_pool;
     small_string_stack *small_string_free_lists;
-    size_t num_blocks;
-    size_t num_large_blocks;
-    size_t total_used;
-    size_t total_size;
     charpool_free_string_t *free_lists;
     charpool_block_t *block;
     charpool_block_t *large_blocks;
@@ -182,11 +178,6 @@ bool charpool_init_options(charpool_t *pool, const charpool_options_t options) {
         return false;
     }
     pool->block = block;
-    pool->num_blocks = 1;
-    pool->num_large_blocks = 0;
-    pool->total_size = pool->block_size;
-    pool->total_used = 0;
-
     return true;
 }
 
@@ -221,7 +212,6 @@ bool charpool_release_size(charpool_t *pool, char *str, size_t size) {
     if (pool == NULL || str == NULL || size < pool->small_string_min_size) return false;
     if (size < pool->small_string_max_size) {
         if (small_string_stack_push(&pool->small_string_free_lists[size - pool->small_string_min_size], str)) {
-            pool->total_used -= size;
             return true;
         } else {
             return false;
@@ -236,7 +226,6 @@ bool charpool_release_size(charpool_t *pool, char *str, size_t size) {
     ((charpool_free_string_t *)str)->next = head;
     pool->free_lists[level].value = str;
 
-    pool->total_used -= size;
     return true;
 }
 
@@ -253,16 +242,12 @@ char *charpool_alloc(charpool_t *pool, size_t size) {
         }
         block->next = pool->large_blocks;
         pool->large_blocks = block;
-        pool->num_large_blocks++;
-        pool->total_size += size;
-        pool->total_used += size;
         return block->data;
     }
 
     // Small string allocation (< small_string_max_size, typically the pointer size)
     for (size_t i = size - pool->small_string_min_size; i < pool->small_string_max_size - pool->small_string_min_size; i++) {
         if (small_string_stack_pop(&pool->small_string_free_lists[i], &result)) {
-            pool->total_used += size;
             return result;
         }
     }
@@ -274,7 +259,6 @@ char *charpool_alloc(charpool_t *pool, size_t size) {
         if (head->value != NULL) {
             result = head->value;
             pool->free_lists[j].next = head->next;
-            pool->total_used += size;
             return result;
         }
     }
@@ -289,9 +273,6 @@ char *charpool_alloc(charpool_t *pool, size_t size) {
         }
         new_block->next = pool->block;
         pool->block = new_block;
-        pool->num_blocks++;
-        pool->total_size += size;
-        pool->total_used += size;
         new_block->block_index = size;
 
         if (index < pool->block_size && pool->block_size - index >= pool->small_string_min_size) {
@@ -302,7 +283,6 @@ char *charpool_alloc(charpool_t *pool, size_t size) {
 
     result = pool->block->data + index;
     pool->block->block_index += size;
-    pool->total_used += size;
     return result;
 }
 

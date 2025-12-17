@@ -11,10 +11,6 @@
 TEST test_charpool(void) {
     charpool_t *pool = charpool_new();
     ASSERT(pool != NULL);
-    ASSERT_EQ(pool->num_blocks, 1);
-    ASSERT_EQ(pool->num_large_blocks, 0);
-    ASSERT_EQ(pool->total_size, pool->block_size);
-    ASSERT_EQ(pool->total_used, 0);
 
     size_t expected_total_used = 0;
 
@@ -36,14 +32,13 @@ TEST test_charpool(void) {
         }
     }
 
-    ASSERT_EQ(pool->num_blocks, 1);
-    ASSERT_EQ(pool->num_large_blocks, 0);
-    ASSERT_EQ(pool->total_size, pool->block_size);
-    ASSERT_EQ(pool->total_used, expected_total_used);
-
     char *large_str = charpool_alloc(pool, pool->block_size);
-    ASSERT_EQ(pool->num_large_blocks, 1);
-    ASSERT_EQ(pool->total_used, expected_total_used + pool->block_size);
+    ASSERT(large_str != NULL);
+    for (size_t i = 0; i < pool->block_size - 1; i++) {
+        large_str[i] = 'a' + (i % 26);
+    }
+    large_str[pool->block_size - 1] = '\0';
+    ASSERT(charpool_release_size(pool, large_str, pool->block_size));
 
     charpool_destroy(pool);
     PASS();
