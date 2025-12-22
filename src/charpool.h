@@ -75,7 +75,6 @@ typedef struct charpool {
     small_string_stack *small_string_free_lists;
     charpool_free_string_t *free_lists;
     charpool_block_t *block;
-    charpool_block_t *large_blocks;
 } charpool_t;
 
 
@@ -94,11 +93,16 @@ charpool_block_t *charpool_block_new(size_t block_size) {
     return block;
 }
 
+void charpool_block_free_data(charpool_block_t *block) {
+    if (block == NULL || block->data == NULL) return;
+    char *str = block->data;
+    block->data = NULL;
+    CHARPOOL_ALIGNED_FREE(str);
+}
+
 void charpool_block_destroy(charpool_block_t *block) {
     if (block == NULL) return;
-    if (block->data != NULL) {
-        CHARPOOL_ALIGNED_FREE(block->data);
-    }
+    charpool_block_free_data(block);
     CHARPOOL_FREE(block);
 }
 
@@ -217,6 +221,12 @@ bool charpool_release_size(charpool_t *pool, char *str, size_t size) {
             return false;
         }
     }
+
+    if (size >= pool->block_size) {
+        CHARPOOL_ALIGNED_FREE(str);
+        return true;
+    }
+
     /* Release to floor(log2(size)) free list, which guarantees that the free list at level i
      * contains all strings of size 2^i or larger
     */
@@ -235,14 +245,8 @@ char *charpool_alloc(charpool_t *pool, size_t size) {
     char *result = NULL;
 
     // Large string allocation (>= block size)
-    if (size > pool->block_size - 1) {
-        charpool_block_t *block = charpool_block_new(size);
-        if (block == NULL) {
-            return NULL;
-        }
-        block->next = pool->large_blocks;
-        pool->large_blocks = block;
-        return block->data;
+    if (size >= pool->block_size) {
+        return CHARPOOL_ALIGNED_MALLOC(size, CHARPOOL_ALIGNMENT);
     }
 
     // Small string allocation (< small_string_max_size, typically the pointer size)
@@ -314,12 +318,6 @@ void charpool_destroy(charpool_t *pool) {
         charpool_block_t *next = block->next;
         charpool_block_destroy(block);
         block = next;
-    }
-    charpool_block_t *large_block = pool->large_blocks;
-    while (large_block != NULL) {
-        charpool_block_t *next = large_block->next;
-        charpool_block_destroy(large_block);
-        large_block = next;
     }
 
     if (pool->small_string_free_lists != NULL) {

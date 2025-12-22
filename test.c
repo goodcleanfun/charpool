@@ -38,6 +38,7 @@ TEST test_charpool(void) {
         large_str[i] = 'a' + (i % 26);
     }
     large_str[pool->block_size - 1] = '\0';
+    charpool_release_size(pool, large_str, pool->block_size);
 
     charpool_destroy(pool);
     PASS();
