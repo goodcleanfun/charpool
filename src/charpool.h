@@ -78,7 +78,7 @@ typedef struct charpool {
 } charpool_t;
 
 
-charpool_block_t *charpool_block_new(size_t block_size) {
+static charpool_block_t *charpool_block_new(size_t block_size) {
     charpool_block_t *block = CHARPOOL_MALLOC(sizeof(charpool_block_t));
     if (block == NULL) return NULL;
 
@@ -93,14 +93,14 @@ charpool_block_t *charpool_block_new(size_t block_size) {
     return block;
 }
 
-void charpool_block_free_data(charpool_block_t *block) {
+static void charpool_block_free_data(charpool_block_t *block) {
     if (block == NULL || block->data == NULL) return;
     char *str = block->data;
     block->data = NULL;
     CHARPOOL_ALIGNED_FREE(str);
 }
 
-void charpool_block_destroy(charpool_block_t *block) {
+static void charpool_block_destroy(charpool_block_t *block) {
     if (block == NULL) return;
     charpool_block_free_data(block);
     CHARPOOL_FREE(block);
@@ -112,7 +112,7 @@ typedef struct charpool_options {
     size_t block_size;
 } charpool_options_t;
 
-charpool_options_t charpool_default_options(void) {
+static charpool_options_t charpool_default_options(void) {
     return (charpool_options_t) {
         .small_string_min_size = 1,
         .small_string_max_size = MAX_SMALL_STRING_SIZE,
@@ -120,7 +120,7 @@ charpool_options_t charpool_default_options(void) {
     };
 }
 
-bool charpool_init_options(charpool_t *pool, const charpool_options_t options) {
+static bool charpool_init_options(charpool_t *pool, const charpool_options_t options) {
     if (pool == NULL || options.small_string_min_size < 1 || options.small_string_min_size > options.small_string_max_size || !is_power_of_two(options.block_size) || !is_power_of_two(options.small_string_max_size)) {
         return false;
     }
@@ -185,11 +185,11 @@ bool charpool_init_options(charpool_t *pool, const charpool_options_t options) {
     return true;
 }
 
-bool charpool_init(charpool_t *pool) {
+static bool charpool_init(charpool_t *pool) {
     return charpool_init_options(pool, charpool_default_options());
 }
 
-charpool_t *charpool_new(void) {
+static charpool_t *charpool_new(void) {
     charpool_t *pool = CHARPOOL_MALLOC(sizeof(charpool_t));
     if (pool == NULL) return NULL;
 
@@ -201,7 +201,7 @@ charpool_t *charpool_new(void) {
     return pool;
 }
 
-charpool_t *charpool_new_options(const charpool_options_t options) {
+static charpool_t *charpool_new_options(const charpool_options_t options) {
     charpool_t *pool = CHARPOOL_MALLOC(sizeof(charpool_t));
     if (pool == NULL) return NULL;
     if (!charpool_init_options(pool, options)) {
@@ -212,7 +212,7 @@ charpool_t *charpool_new_options(const charpool_options_t options) {
 }
 
 
-bool charpool_release_size(charpool_t *pool, char *str, size_t size) {
+static bool charpool_release_size(charpool_t *pool, char *str, size_t size) {
     if (pool == NULL || str == NULL || size < pool->small_string_min_size) return false;
     if (size < pool->small_string_max_size) {
         if (small_string_stack_push(&pool->small_string_free_lists[size - pool->small_string_min_size], str)) {
@@ -239,7 +239,7 @@ bool charpool_release_size(charpool_t *pool, char *str, size_t size) {
     return true;
 }
 
-char *charpool_alloc(charpool_t *pool, size_t size) {
+static char *charpool_alloc(charpool_t *pool, size_t size) {
     if (pool == NULL || size < pool->small_string_min_size) return NULL;
 
     char *result = NULL;
@@ -291,7 +291,7 @@ char *charpool_alloc(charpool_t *pool, size_t size) {
 }
 
 
-char *charpool_strndup(charpool_t *pool, const char *str, size_t n) {
+static char *charpool_strndup(charpool_t *pool, const char *str, size_t n) {
     if (pool == NULL || str == NULL || n == 0) return NULL;
 
     char *result = charpool_alloc(pool, n + 1);
@@ -303,14 +303,14 @@ char *charpool_strndup(charpool_t *pool, const char *str, size_t n) {
     return result;
 }
 
-char *charpool_strdup(charpool_t *pool, const char *str) {
+static char *charpool_strdup(charpool_t *pool, const char *str) {
     if (pool == NULL || str == NULL) return NULL;
 
     return charpool_strndup(pool, str, strlen(str));
 }
 
 
-void charpool_destroy(charpool_t *pool) {
+static void charpool_destroy(charpool_t *pool) {
     if (pool == NULL) return;
 
     charpool_block_t *block = pool->block;
