@@ -1,6 +1,6 @@
 {
     "name": "charpool",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "repo": "goodcleanfun/charpool",
     "description": "A cache-friendly memory pool for strings, using adaptive free-lists: stacks when strings are smaller than a pointer and in-block for strings that are pointer-size or larger.",
     "keywords": ["string", "char", "arena", "bump", "allocator", "amortized", "cache-friendly"],
@@ -9,7 +9,6 @@
       "silentbicycle/greatest": "*"
     },
     "dependencies": {
-      "goodcleanfun/aligned": "*",
       "goodcleanfun/bit_utils": "*",
       "goodcleanfun/stack": "*"
     },
