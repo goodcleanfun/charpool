@@ -271,7 +271,7 @@ static char *charpool_alloc(charpool_t *pool, size_t size) {
 
     if (index + size > pool->block_size) {
         charpool_block_t *block = pool->block;
-        charpool_block_t *new_block = charpool_block_new(size);
+        charpool_block_t *new_block = charpool_block_new(pool->block_size);
         if (new_block == NULL) {
             return NULL;
         }
